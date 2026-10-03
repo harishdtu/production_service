@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build -t production-service:${{ github.sha }} .
+
+      - name: Smoke test container
+        run: |
+          docker run -d -p 3000:3000 --name production-service-ci -e NODE_ENV=production -e PORT=3000 -e SERVICE_NAME=production-service -e LOG_LEVEL=info production-service:${{ github.sha }}
+          sleep 10
+          curl --fail --silent http://127.0.0.1:3000/health
+          curl --fail --silent http://127.0.0.1:3000/ready
+          curl --fail --silent http://127.0.0.1:3000/metrics | grep production_service_http_requests_total
+          docker restart production-service-ci
+          sleep 5
+          curl --fail --silent http://127.0.0.1:3000/health
+          docker stop production-service-ci

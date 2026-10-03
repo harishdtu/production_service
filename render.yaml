@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: production-service
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVICE_NAME
+        value: production-service
+      - key: LOG_LEVEL
+        value: info
+      - key: SIMULATE_FAILURE
+        value: "false"
